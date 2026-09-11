@@ -1,5 +1,7 @@
 # Maxxor — Control de Personal en Tiempo Real
 
+**🔗 Demo en vivo:** https://ramiroz93.github.io/maxxor/
+
 Panel de monitoreo de personal para equipos remotos o híbridos: sesiones de entrada/salida, capturas periódicas, actividad de navegación agrupada por sitio, y seguimiento de puntualidad contra horarios configurables.
 
 Extraído como pieza de portfolio de un sistema de gestión más grande ([VirtuallCorp — Sistema de Ventas](../sistema-ventas-virtualcorp-github)), donde vive como uno de sus módulos.
