@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maxxor - Control de Personal en Tiempo Real</title>
+<style>
+  :root {
+    --bg:        #FAFAFA;
+    --panel:     #FFFFFF;
+    --borde:     #E4E4E7;
+    --texto:     #18181B;
+    --texto-sec: #71717A;
+    --texto-ter: #A1A1AA;
+    --acento:    #14215E;
+    --acento-suave: #EEF0F9;
+    --verde:     #16A34A;
+    --verde-bg:  #F0FDF4;
+    --rojo:      #DC2626;
+    --rojo-bg:   #FEF2F2;
+    --radio:     10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif; background: var(--bg); color: var(--texto); -webkit-font-smoothing: antialiased; }
+
+  /* ── LOGIN DEMO ── */
+  #pantalla-login { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .login-card { background: var(--panel); border: 1px solid var(--borde); border-radius: 14px; padding: 40px 36px; width: 100%; max-width: 380px; }
+  .login-logo { font-size: 20px; font-weight: 700; color: var(--acento); text-align: center; margin-bottom: 2px; }
+  .login-sub { font-size: 12.5px; color: var(--texto-sec); text-align: center; margin-bottom: 28px; }
+  .btn-login { width: 100%; padding: 11px; background: var(--acento); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .btn-login:hover { opacity: .9; }
+  .login-nota { margin-top: 16px; padding: 12px 14px; border-radius: 8px; font-size: 12.5px; background: var(--acento-suave); color: var(--texto-sec); text-align: center; }
+
+  /* ── APP ── */
+  #app { display: none; }
+  .topbar { background: var(--acento); color: #fff; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .topbar-titulo { font-weight: 700; font-size: 14px; }
+  .topbar-nota { font-size: 12px; opacity: .8; }
+  .main { padding: 24px; max-width: 1100px; margin: 0 auto; }
+
+  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
+  .page-header-titulo { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+  .page-header-sub { font-size: 13px; color: var(--texto-sec); margin-top: 2px; }
+
+  .btn { padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid var(--borde); background: white; color: var(--texto); transition: all .15s; display: inline-flex; align-items: center; gap: 6px; }
+  .btn:hover { border-color: var(--acento); color: var(--acento); }
+  .btn-primario { background: var(--acento); color: white; border-color: var(--acento); }
+  .btn-primario:hover { opacity: 0.85; color: white; }
+
+  .panel-card { background: var(--panel); border: 1px solid var(--borde); border-radius: var(--radio); overflow: hidden; margin-bottom: 20px; }
+  .panel-card-hdr { padding: 18px 22px; border-bottom: 1px solid var(--borde); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+
+  .toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; background: var(--texto); color: white; border-radius: 10px; font-size: 13.5px; font-weight: 500; box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 300; opacity: 0; transform: translateY(10px); transition: all .3s; pointer-events: none; }
+  .toast.visible { opacity: 1; transform: translateY(0); }
+
+  .bpo-tab { background: none; border: none; border-bottom: 3px solid transparent; padding: 10px 20px; font-size: 14px; font-weight: 600; color: var(--texto-sec); cursor: pointer; transition: all .15s; margin-bottom: -2px; }
+  .bpo-tab:hover { color: var(--texto); }
+  .bpo-tab.activo { color: var(--acento); border-bottom-color: var(--acento); }
+</style>
+</head>
+<body>
+
+<!-- LOGIN DEMO (sin backend, solo para mostrar el flujo) -->
+<div id="pantalla-login">
+  <div class="login-card">
+    <div class="login-logo">Maxxor</div>
+    <div class="login-sub">Panel de control de personal en tiempo real</div>
+    <button class="btn-login" onclick="entrarDemo()">Entrar al panel demo</button>
+    <div class="login-nota">Demo de portfolio: no hay backend real. Los datos que vas a ver son ficticios y se generan en tu navegador.</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-titulo">Maxxor — Control de Personal</div>
+    <div class="topbar-nota">Módulo extraído de VirtuallCorp · datos de demostración</div>
+  </div>
+
+  <div class="main">
+    <!-- ══ MAXXOR ══ -->
+    <section id="sec-control-personal">
+      <div class="page-header">
+        <div>
+          <div class="page-header-titulo">&#128101; Maxxor</div>
+          <div class="page-header-sub">Panel de control de personal en tiempo real</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="date" id="cp-fecha" onchange="cargarControlPersonal()" style="padding:7px 11px;border:1px solid var(--borde);border-radius:8px;font-size:13px;font-family:inherit;background:var(--panel);color:var(--texto)">
+          <button class="btn" onclick="cargarControlPersonal()">&#8635; Actualizar</button>
+        </div>
+      </div>
+
+      <!-- KPIs -->
+      <div id="cp-kpis" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:12px;margin-bottom:22px"></div>
+
+      <!-- En línea ahora -->
+      <div class="panel-card" style="margin-bottom:22px">
+        <div class="panel-card-hdr" style="display:flex;justify-content:space-between;align-items:center">
+          <span>&#128994; En l&#237;nea ahora</span>
+          <span id="cp-online-count" style="font-size:11px;background:var(--acento);color:#fff;padding:2px 10px;border-radius:99px;font-weight:600"></span>
+        </div>
+        <div id="cp-online-grid" style="display:flex;flex-wrap:wrap;gap:12px;padding:16px;min-height:70px"></div>
+      </div>
+
+      <!-- Detalle empleado (se abre al hacer clic) -->
+      <div id="cp-detalle" class="panel-card" style="display:none;margin-bottom:22px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+          <div>
+            <div id="cp-det-nombre" style="font-size:17px;font-weight:700"></div>
+            <div id="cp-det-sub" style="font-size:12px;color:var(--texto-sec);margin-top:3px"></div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn" onclick="cpAbrirHorario()" style="font-size:12px">&#9881; Horario</button>
+            <button class="btn" onclick="cpCerrarDetalle()" style="font-size:12px">&#10005; Cerrar</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:0;margin-bottom:18px;border-bottom:2px solid var(--borde)">
+          <button id="cp-dt-hist-btn" class="bpo-tab activo" onclick="switchCPDetTab('historial')">&#128337; Historial</button>
+          <button id="cp-dt-cap-btn" class="bpo-tab" onclick="switchCPDetTab('capturas')">&#128247; Capturas</button>
+          <button id="cp-dt-act-btn" class="bpo-tab" onclick="switchCPDetTab('actividad')">&#128187; Actividad</button>
+          <button id="cp-dt-ret-btn" class="bpo-tab" onclick="switchCPDetTab('retrasos')">&#9203; Retrasos</button>
+        </div>
+        <div id="cp-dt-historial"><div id="cp-det-hist"></div></div>
+        <div id="cp-dt-capturas" style="display:none">
+          <div id="cp-det-capt" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px"></div>
+        </div>
+        <div id="cp-dt-actividad" style="display:none"><div id="cp-det-act"></div></div>
+        <div id="cp-dt-retrasos"  style="display:none"><div id="cp-det-ret"></div></div>
+      </div>
+
+      <!-- Historial completo del día -->
+      <div id="cp-hist-completo" class="panel-card">
+        <div style="font-size:12px;font-weight:700;color:var(--texto-sec);margin-bottom:14px;letter-spacing:.05em">HISTORIAL DEL D&#205;A</div>
+        <div id="cp-hist-tabla"></div>
+      </div>
+
+      <div style="display:none"><div id="cp-capt-grid"></div><div id="cp-tab-historial"></div><div id="cp-tab-capturas"></div></div>
+
+      <!-- Reloj picker -->
+      <div id="cp-reloj" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10001;align-items:center;justify-content:center">
+        <div style="background:var(--panel);border-radius:16px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.35);width:272px;user-select:none">
+          <div style="background:var(--acento);padding:18px 20px 14px;text-align:center">
+            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.65);letter-spacing:.1em;margin-bottom:10px">SELECCIONAR HORA</div>
+            <div style="display:flex;align-items:center;justify-content:center;gap:2px">
+              <span id="cp-rel-hh" onclick="cpRelModo('hora')" style="font-size:50px;font-weight:300;color:#fff;cursor:pointer;padding:0 6px;border-radius:8px;transition:opacity .15s">08</span>
+              <span style="font-size:50px;font-weight:300;color:rgba(255,255,255,.7)">:</span>
+              <span id="cp-rel-mm" onclick="cpRelModo('minuto')" style="font-size:50px;font-weight:300;color:#fff;cursor:pointer;padding:0 6px;border-radius:8px;transition:opacity .15s">00</span>
+              <div style="display:flex;flex-direction:column;gap:2px;margin-left:10px">
+                <button id="cp-rel-am-btn" onclick="cpRelSetAmPm('AM')" style="font-size:13px;font-weight:700;color:#fff;background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:4px;font-family:inherit">AM</button>
+                <button id="cp-rel-pm-btn" onclick="cpRelSetAmPm('PM')" style="font-size:13px;font-weight:700;color:rgba(255,255,255,.4);background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:4px;font-family:inherit">PM</button>
+              </div>
+            </div>
+          </div>
+          <div style="padding:16px;display:flex;justify-content:center;background:var(--panel)">
+            <canvas id="cp-rel-canvas" width="220" height="220" style="cursor:pointer;border-radius:50%"></canvas>
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;padding:0 16px 16px;background:var(--panel)">
+            <button class="btn" onclick="cpCerrarReloj()">Cancelar</button>
+            <button class="btn btn-primario" onclick="cpConfirmarReloj()">OK</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal horario por día -->
+      <div id="cp-modal-horario" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center" onclick="if(event.target===this)cpCerrarHorario()">
+        <div style="background:var(--panel);border:1px solid var(--borde);border-radius:14px;padding:24px 26px 20px;width:100%;max-width:680px;box-shadow:0 20px 60px rgba(0,0,0,.25);max-height:92vh;overflow-y:auto">
+          <div style="font-size:16px;font-weight:700;margin-bottom:2px">&#128197; Horario por día</div>
+          <div id="cp-hor-sub" style="font-size:13px;color:var(--texto-sec);margin-bottom:18px"></div>
+
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+            <span style="font-size:12px;font-weight:700;color:var(--texto-sec)">TOLERANCIA DE INGRESO</span>
+            <input type="number" id="cp-hor-tol" value="5" min="0" max="60" style="width:62px;padding:6px 10px;border:1px solid var(--borde);border-radius:7px;font-size:14px;font-family:inherit;background:var(--panel);color:var(--texto)">
+            <span style="font-size:12px;color:var(--texto-sec)">minutos</span>
+          </div>
+
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:13px">
+              <thead>
+                <tr style="background:var(--acento);color:#fff;text-align:center">
+                  <th style="padding:8px 12px;text-align:left">D&#237;a</th>
+                  <th colspan="2" style="padding:8px 12px;border-left:2px solid rgba(255,255,255,.3)">&#127774; Turno Ma&#241;ana</th>
+                  <th colspan="2" style="padding:8px 12px;border-left:2px solid rgba(255,255,255,.3)">&#127763; Turno Tarde</th>
+                </tr>
+                <tr style="background:var(--acento-suave);font-size:11px;font-weight:700;color:var(--texto-sec);text-align:center">
+                  <th style="padding:6px 12px;text-align:left"></th>
+                  <th style="padding:6px 10px;border-left:2px solid var(--borde)">ENTRADA</th>
+                  <th style="padding:6px 10px">SALIDA</th>
+                  <th style="padding:6px 10px;border-left:2px solid var(--borde)">ENTRADA</th>
+                  <th style="padding:6px 10px">SALIDA</th>
+                </tr>
+              </thead>
+              <tbody id="cp-hor-tbody"></tbody>
+            </table>
+          </div>
+
+          <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+            <button class="btn" onclick="cpCerrarHorario()">Cancelar</button>
+            <button class="btn btn-primario" onclick="cpGuardarHorario()">&#128190; Guardar horario</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ── DEMO: login sin backend ──
+  function entrarDemo() {
+    document.getElementById('pantalla-login').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    inicializarControlPersonal();
+  }
+
+  // ── DEMO: datos ficticios generados en el navegador (sin backend real) ──
+  var DEMO_EMPLEADOS = [
+    { id: 'emp-1', nombre: 'Ana Torres' },
+    { id: 'emp-2', nombre: 'Luis Fernández' },
+    { id: 'emp-3', nombre: 'Camila Rojas' },
+    { id: 'emp-4', nombre: 'Diego Paredes' }
+  ];
+  var DEMO_SITIOS = [
+    'crm-demo.local/clientes',
+    'crm-demo.local/ventas',
+    'correo-demo.local/inbox',
+    'reportes-demo.local/dashboard',
+    'chat-demo.local/equipo'
+  ];
+  var DEMO_HORARIOS = {};
+  var DEMO_EVENTOS = [];
+
+  function _fakeScreenshot(texto) {
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200">'
+      + '<rect width="100%" height="100%" fill="#E4E4E7"/>'
+      + '<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#71717A">' + texto + '</text></svg>';
+    return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+  }
+
+  function generarDatosDemo() {
+    var hoy = new Date();
+    DEMO_EMPLEADOS.forEach(function(emp, idx) {
+      var tieneTarde = idx % 2 === 0;
+      var dias = {};
+      ['lun', 'mar', 'mie', 'jue', 'vie'].forEach(function(dk) {
+        dias[dk] = { activo: true, t1e: '08:00', t1s: '13:00', t2: tieneTarde, t2e: '14:00', t2s: '18:00' };
+      });
+      dias.sab = { activo: false };
+      dias.dom = { activo: false };
+      DEMO_HORARIOS[emp.id] = { vendedor_id: emp.id, vendedor_nombre: emp.nombre, tolerancia_minutos: 5, dias: dias, updated_at: new Date().toISOString() };
+
+      for (var d = 13; d >= 0; d--) {
+        var fecha = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - d);
+        var dow = fecha.getDay();
+        if (dow === 0 || dow === 6) continue;
+        var esHoy = d === 0;
+
+        var retrasoMin = Math.random() < 0.25 ? Math.round(Math.random() * 18) : 0;
+        var ent1 = new Date(fecha); ent1.setHours(8, retrasoMin, 0, 0);
+        DEMO_EVENTOS.push({ vendedor_id: emp.id, vendedor_nombre: emp.nombre, tipo: 'checkin', created_at: ent1.toISOString() });
+
+        var nCap = 2 + Math.floor(Math.random() * 3);
+        for (var c = 0; c < nCap; c++) {
+          var ct = new Date(ent1.getTime() + (c + 1) * 40 * 60000);
+          DEMO_EVENTOS.push({ vendedor_id: emp.id, vendedor_nombre: emp.nombre, tipo: 'captura', url_captura: _fakeScreenshot('Captura demo ' + (c + 1)), created_at: ct.toISOString() });
+        }
+
+        var nAct = 3 + Math.floor(Math.random() * 4);
+        for (var a = 0; a < nAct; a++) {
+          var at = new Date(ent1.getTime() + (a + 1) * 25 * 60000);
+          var sitio = DEMO_SITIOS[Math.floor(Math.random() * DEMO_SITIOS.length)];
+          DEMO_EVENTOS.push({ vendedor_id: emp.id, vendedor_nombre: emp.nombre, tipo: 'actividad', detalle: sitio, created_at: at.toISOString() });
+        }
+
+        if (Math.random() < 0.3) {
+          var oi = new Date(ent1.getTime() + 90 * 60000);
+          var of = new Date(oi.getTime() + (5 + Math.random() * 15) * 60000);
+          DEMO_EVENTOS.push({ vendedor_id: emp.id, vendedor_nombre: emp.nombre, tipo: 'ocio_inicio', created_at: oi.toISOString() });
+          DEMO_EVENTOS.push({ vendedor_id: emp.id, vendedor_nombre: emp.nombre, tipo: 'ocio_fin', created_at: of.toISOString() });
+        }
+
+        var dejarEnLinea = esHoy && idx % 2 === 0;
+        var sal1 = new Date(fecha); sal1.setHours(13, Math.round(Math.random() * 10), 0, 0);
+
+        if (tieneTarde) {
+          if (!dejarEnLinea) DEMO_EVENTOS.push({ vendedor_id: emp.id, vendedor_nombre: emp.nombre, tipo: 'checkout', created_at: sal1.toISOString() });
+          var ent2 = new Date(fecha); ent2.setHours(14, Math.round(Math.random() * 8), 0, 0);
+          DEMO_EVENTOS.push({ vendedor_id: emp.id, vendedor_nombre: emp.nombre, tipo: 'checkin', created_at: ent2.toISOString() });
+          var sal2 = new Date(fecha); sal2.setHours(18, Math.round(Math.random() * 10), 0, 0);
+          if (!dejarEnLinea) DEMO_EVENTOS.push({ vendedor_id: emp.id, vendedor_nombre: emp.nombre, tipo: 'checkout', created_at: sal2.toISOString() });
+        } else {
+          if (!dejarEnLinea) DEMO_EVENTOS.push({ vendedor_id: emp.id, vendedor_nombre: emp.nombre, tipo: 'checkout', created_at: sal1.toISOString() });
+        }
+      }
+    });
+  }
+  generarDatosDemo();
+
+  // ── DEMO: mock del cliente Supabase (sin backend real, solo filtra los arrays de arriba) ──
+  var supa = {
+    from: function(table) {
+      var f = { gte: null, lte: null, eq: null, single: false };
+      var api = {
+        select: function() { return api; },
+        gte: function(field, val) { f.gte = val; return api; },
+        lte: function(field, val) { f.lte = val; return api; },
+        eq: function(field, val) { f.eq = val; return api; },
+        order: function() { return api; },
+        single: function() { f.single = true; return api; },
+        upsert: function(row) {
+          if (table === 'cp_horarios') DEMO_HORARIOS[row.vendedor_id] = row;
+          return new Promise(function(resolve) { setTimeout(function() { resolve({ data: [row], error: null }); }, 0); });
+        },
+        then: function(resolve) {
+          return new Promise(function(res) {
+            setTimeout(function() {
+              var rows = (table === 'cp_eventos' ? DEMO_EVENTOS : Object.keys(DEMO_HORARIOS).map(function(k) { return DEMO_HORARIOS[k]; })).slice();
+              if (f.eq) rows = rows.filter(function(r) { return r.vendedor_id === f.eq; });
+              if (f.gte) rows = rows.filter(function(r) { return r.created_at >= f.gte; });
+              if (f.lte) rows = rows.filter(function(r) { return r.created_at <= f.lte; });
+              rows.sort(function(a, b) { return a.created_at < b.created_at ? -1 : 1; });
+              var result = f.single
+                ? { data: rows[0] || null, error: rows[0] ? null : { message: 'No encontrado' } }
+                : { data: rows, error: null };
+              res(resolve(result));
+            }, 0);
+          });
+        }
+      };
+      return api;
+    }
+  };
+
+  // ── Utilidades compartidas (extraídas del sistema original) ──
+  function escHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function mostrarToast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('visible');
+    setTimeout(function(){ t.classList.remove('visible'); }, 3000);
+  }
+
+  // ── MAXXOR ──
+  var _cpRefTimer  = null;
+  function _localHoy()         { return new Date().toISOString().slice(0, 10); }
+  function _localIso(fecha)    { return fecha + 'T00:00:00.000Z'; }
+  function _localIsoFin(fecha) { return fecha + 'T23:59:59.999Z'; }
+  function _localFechaEv(iso)  { return iso.slice(0, 10); }
+  var _cpDetTab    = 'historial';
+  var _cpDetEmpId  = null;
+  var _cpTodosEv   = [];
+
+  function inicializarControlPersonal() {
+    var fechaEl = document.getElementById('cp-fecha');
+    if (fechaEl && !fechaEl.value) fechaEl.value = _localHoy();
+    cargarControlPersonal();
+    clearInterval(_cpRefTimer);
+    _cpRefTimer = setInterval(function() {
+      cargarControlPersonal();
+    }, 60000);
+  }
+
+  function cargarControlPersonal() {
+    var fecha = (document.getElementById('cp-fecha') || {}).value || _localHoy();
+    var hoy   = _localHoy();
+    supa.from('cp_eventos').select('*').gte('created_at', _localIso(hoy))
+      .order('created_at', { ascending: true }).then(function(r) {
+        var evHoy = r.error ? [] : (r.data || []);
+        _cpRenderOnline(evHoy);
+        if (fecha === hoy) _cpRenderKPIs(evHoy);
+      });
+    supa.from('cp_eventos').select('*')
+      .gte('created_at', _localIso(fecha))
+      .lte('created_at', _localIsoFin(fecha))
+      .order('created_at', { ascending: true }).then(function(r) {
+        _cpTodosEv = r.error ? [] : (r.data || []);
+        _cpRenderHistorial(_cpTodosEv);
+        if (fecha !== hoy) _cpRenderKPIs(_cpTodosEv);
+        if (_cpDetEmpId) _cpCargarDetalle(_cpDetEmpId);
+      });
+  }
+
+  var _CP_OFFLINE_MS = 10 * 60 * 1000; // 10 min sin ping = offline
+
+  function _cpSesiones(evs) {
+    var ses = []; var cur = null;
+    evs.forEach(function(e) {
+      if (e.tipo === 'checkin') {
+        if (cur && !cur.sal && !cur.salEst) cur.salEst = e.created_at;
+        cur = { ent: e.created_at, sal: null, salEst: null, capt: 0, ocioMin: 0, ocioDesde: null };
+        ses.push(cur);
+      } else if (e.tipo === 'checkout' && cur) {
+        cur.sal = e.created_at; cur = null;
+      } else if (cur) {
+        if (!cur.salEst || new Date(e.created_at) > new Date(cur.salEst)) cur.salEst = e.created_at;
+        if (e.tipo === 'captura')    cur.capt++;
+        if (e.tipo === 'ocio_inicio') cur.ocioDesde = new Date(e.created_at);
+        if (e.tipo === 'ocio_fin' && cur.ocioDesde) {
+          cur.ocioMin += Math.round((new Date(e.created_at) - cur.ocioDesde) / 60000);
+          cur.ocioDesde = null;
+        }
+      }
+    });
+    if (cur && cur.ocioDesde) cur.ocioMin += Math.round((new Date() - cur.ocioDesde) / 60000);
+    return ses;
+  }
+
+  function _cpSalidaEfectiva(s) {
+    if (s.sal) return { time: s.sal, est: false };
+    if (!s.salEst) return null;
+    var hace = Date.now() - new Date(s.salEst).getTime();
+    if (hace < _CP_OFFLINE_MS) return null;
+    return { time: s.salEst, est: true };
+  }
+
+  function _cpRenderKPIs(eventos) {
+    var el = document.getElementById('cp-kpis');
+    if (!el) return;
+    var byEmp = {};
+    eventos.forEach(function(e) {
+      if (!byEmp[e.vendedor_id]) byEmp[e.vendedor_id] = { nombre: e.vendedor_nombre, evs: [] };
+      byEmp[e.vendedor_id].evs.push(e);
+    });
+    var enLinea = 0, totalCaps = 0, totalOcioMin = 0, totalSesMin = 0, sesCount = 0;
+    Object.keys(byEmp).forEach(function(id) {
+      var emp = byEmp[id];
+      var ult = emp.evs[emp.evs.length - 1];
+      if (ult && ult.tipo !== 'checkout' && (Date.now() - new Date(ult.created_at).getTime() < _CP_OFFLINE_MS)) enLinea++;
+      emp.evs.forEach(function(e) { if (e.tipo === 'captura') totalCaps++; });
+      _cpSesiones(emp.evs).forEach(function(s) {
+        totalOcioMin += s.ocioMin;
+        if (s.ent) {
+          var end = s.sal ? new Date(s.sal) : new Date();
+          totalSesMin += Math.round((end - new Date(s.ent)) / 60000);
+          sesCount++;
+        }
+      });
+    });
+    var promMin = sesCount ? Math.round(totalSesMin / sesCount) : 0;
+    var total   = Object.keys(byEmp).length;
+    var KPI = [
+      { icon:'&#128994;', label:'En l&#237;nea', val: enLinea + ' / ' + total, color:'#16a34a' },
+      { icon:'&#128197;', label:'Ingresos hoy', val: eventos.filter(function(e){return e.tipo==='checkin';}).length, color:'var(--acento)' },
+      { icon:'&#128247;', label:'Capturas', val: totalCaps, color:'#7c3aed' },
+      { icon:'&#128564;', label:'Ocio total', val: Math.floor(totalOcioMin/60)+'h '+(totalOcioMin%60)+'m', color: totalOcioMin > 30 ? '#dc2626' : '#92400e' },
+      { icon:'&#9201;',   label:'Tiempo prom.', val: Math.floor(promMin/60)+'h '+(promMin%60)+'m', color:'var(--acento)' },
+    ];
+    el.innerHTML = KPI.map(function(k) {
+      return '<div class="panel-card" style="padding:16px 18px">'
+        + '<div style="font-size:20px;margin-bottom:6px">'+k.icon+'</div>'
+        + '<div style="font-size:22px;font-weight:800;color:'+k.color+';line-height:1">'+k.val+'</div>'
+        + '<div style="font-size:11px;color:var(--texto-sec);margin-top:4px;font-weight:600;letter-spacing:.03em">'+k.label+'</div>'
+        + '</div>';
+    }).join('');
+  }
+
+  function _cpRenderOnline(eventos) {
+    var grid  = document.getElementById('cp-online-grid');
+    var cntEl = document.getElementById('cp-online-count');
+    if (!grid) return;
+    var byEmp = {};
+    eventos.forEach(function(e) {
+      if (!byEmp[e.vendedor_id]) byEmp[e.vendedor_id] = { nombre: e.vendedor_nombre, evs: [] };
+      byEmp[e.vendedor_id].evs.push(e);
+    });
+    var keys = Object.keys(byEmp);
+    if (!keys.length) {
+      grid.innerHTML = '<div style="color:var(--texto-sec);font-size:13px;padding:8px">Nadie conectado hoy.</div>';
+      if (cntEl) cntEl.textContent = '0';
+      return;
+    }
+    var online = 0; var html = '';
+    keys.forEach(function(id) {
+      var emp    = byEmp[id];
+      var ult    = emp.evs[emp.evs.length - 1];
+      var activo = ult && ult.tipo !== 'checkout' && (Date.now() - new Date(ult.created_at).getTime() < _CP_OFFLINE_MS);
+      var checkin = emp.evs.find(function(e){ return e.tipo === 'checkin'; });
+      var horaEnt = checkin ? new Date(checkin.created_at).toLocaleTimeString('es-BO',{hour:'2-digit',minute:'2-digit'}) : '--';
+      var caps    = emp.evs.filter(function(e){ return e.tipo === 'captura'; }).length;
+      var enOcio  = false;
+      var ocioMin = 0; var ocioDesde = null;
+      emp.evs.forEach(function(e) {
+        if (e.tipo === 'ocio_inicio') { enOcio = true; ocioDesde = new Date(e.created_at); }
+        else if (e.tipo === 'ocio_fin') { enOcio = false; if (ocioDesde) { ocioMin += Math.round((new Date(e.created_at)-ocioDesde)/60000); ocioDesde=null; } }
+      });
+      if (enOcio && ocioDesde) ocioMin += Math.round((Date.now()-ocioDesde)/60000);
+      var _ses = _cpSesiones(emp.evs);
+      var totalMin = 0;
+      _ses.forEach(function(s) {
+        if (!s.ent) return;
+        var _sal = _cpSalidaEfectiva(s);
+        var endT = _sal ? new Date(_sal.time) : new Date();
+        totalMin += Math.max(0, Math.round((endT - new Date(s.ent)) / 60000));
+      });
+      var durTxt = Math.floor(totalMin/60)+'h '+(totalMin%60)+'m';
+      if (activo) online++;
+      var borde = enOcio ? '2px solid #dc2626' : (activo ? '2px solid #22c55e' : '1px solid var(--borde)');
+      html += '<div class="panel-card" style="padding:14px 16px;min-width:170px;flex:0 0 auto;cursor:pointer;border:'+borde+';transition:box-shadow .2s"'
+        + ' onclick="cpVerDetalle(\''+escHtml(id)+'\',\''+escHtml(emp.nombre)+'\')"'
+        + ' onmouseover="this.style.boxShadow=\'0 4px 16px rgba(0,0,0,.12)\'" onmouseout="this.style.boxShadow=\'\'">';
+      html += '<div style="display:flex;align-items:center;gap:7px;margin-bottom:8px">';
+      html += '<div style="width:9px;height:9px;border-radius:50%;background:'+(activo?'#22c55e':'#9ca3af')+';flex-shrink:0"></div>';
+      html += '<span style="font-weight:700;font-size:14px">'+escHtml(emp.nombre)+'</span></div>';
+      html += '<div style="font-size:11.5px;color:var(--texto-sec)">&#128336; Entrada <b>'+horaEnt+'</b></div>';
+      html += '<div style="font-size:12px;font-weight:600;color:'+(activo?'var(--verde)':'var(--texto-sec)')+';margin-top:3px">'+durTxt+(activo?' <span style="color:var(--verde)">(en l&#237;nea)</span>':' (desconectado)')+'</div>';
+      html += '<div style="display:flex;gap:12px;margin-top:8px;padding-top:8px;border-top:1px solid var(--borde)">';
+      html += '<div style="font-size:11px;color:var(--texto-sec)">&#128247; <b>'+caps+'</b> capturas</div>';
+      if (ocioMin > 0) html += '<div style="font-size:11px;color:#dc2626">&#9209; <b>'+ocioMin+'m</b> ocio</div>';
+      html += '</div>';
+      html += '<div style="font-size:10px;color:var(--acento);margin-top:6px;font-weight:600">Ver detalle &#8594;</div>';
+      html += '</div>';
+    });
+    grid.innerHTML = html;
+    if (cntEl) cntEl.textContent = online + ' en l&#237;nea';
+  }
+
+  function cpVerDetalle(id, nombre) {
+    _cpDetEmpId = id;
+    _cpDetTab   = 'historial';
+    var det = document.getElementById('cp-detalle');
+    var nom = document.getElementById('cp-det-nombre');
+    var sub = document.getElementById('cp-det-sub');
+    if (nom) nom.textContent = nombre;
+    if (sub) sub.textContent = 'Cargando datos...';
+    if (det) det.style.display = 'block';
+    det.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    switchCPDetTab('historial');
+    _cpCargarDetalle(id);
+  }
+
+  function cpCerrarDetalle() {
+    _cpDetEmpId = null;
+    var det = document.getElementById('cp-detalle');
+    if (det) det.style.display = 'none';
+  }
+
+  function switchCPDetTab(tab) {
+    _cpDetTab = tab;
+    ['historial','capturas','actividad','retrasos'].forEach(function(t) {
+      var p = document.getElementById('cp-dt-' + t);
+      var b = document.getElementById('cp-dt-' + (t==='historial'?'hist':t==='capturas'?'cap':t==='actividad'?'act':'ret') + '-btn');
+      if (p) p.style.display = t === tab ? 'block' : 'none';
+      if (b) b.classList.toggle('activo', t === tab);
+    });
+    if (_cpDetEmpId) _cpCargarDetalle(_cpDetEmpId);
+  }
+
+  function _cpCargarDetalle(empId) {
+    var fecha = (document.getElementById('cp-fecha') || {}).value || _localHoy();
+    var _d180 = new Date(Date.now() - 180*24*60*60*1000);
+    var _f180 = _d180.getFullYear()+'-'+String(_d180.getMonth()+1).padStart(2,'0')+'-'+String(_d180.getDate()).padStart(2,'0');
+    var evQuery = _cpDetTab === 'retrasos'
+      ? supa.from('cp_eventos').select('*').eq('vendedor_id', empId)
+          .gte('created_at', _localIso(_f180))
+          .order('created_at', { ascending: true })
+      : supa.from('cp_eventos').select('*').eq('vendedor_id', empId)
+          .gte('created_at', _localIso(fecha))
+          .lte('created_at', _localIsoFin(fecha))
+          .order('created_at', { ascending: true });
+    evQuery.then(function(r) {
+      var ev = r.error ? [] : (r.data || []);
+      var sub = document.getElementById('cp-det-sub');
+      var ses = _cpSesiones(ev.filter(function(e){ return _localFechaEv(e.created_at)===fecha; }));
+      var caps = ev.filter(function(e){ return e.tipo==='captura' && _localFechaEv(e.created_at)===fecha; }).length;
+      var ocioTot = ses.reduce(function(a,s){ return a+s.ocioMin; },0);
+      if (sub) sub.textContent = ses.length + ' sesión(es) · ' + caps + ' capturas · ' + ocioTot + 'm ocio';
+      if (_cpDetTab === 'retrasos') {
+        supa.from('cp_horarios').select('*').eq('vendedor_id', empId).single().then(function(hr) {
+          _cpRenderDetRetrasos(ev, hr.error ? null : hr.data);
+        });
+      } else if (_cpDetTab === 'historial') _cpRenderDetHistorial(ev);
+      else if (_cpDetTab === 'capturas') _cpRenderDetCapturas(ev);
+      else _cpRenderDetActividad(ev);
+    });
+  }
+
+  function _cpRenderDetHistorial(ev) {
+    var el = document.getElementById('cp-det-hist');
+    if (!el) return;
+    var ses = _cpSesiones(ev);
+    if (!ses.length) { el.innerHTML = '<div style="padding:24px;text-align:center;color:var(--texto-sec)">Sin sesiones este día.</div>'; return; }
+    var fmtH   = function(iso) { return iso ? new Date(iso).toLocaleTimeString('es-BO',{hour:'2-digit',minute:'2-digit'}) : '--'; };
+    var fmtDur = function(a, b) {
+      if (!a) return '--';
+      var m = Math.round(((b ? new Date(b) : new Date()) - new Date(a)) / 60000);
+      return Math.floor(m/60)+'h '+(m%60)+'m';
+    };
+    var html = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">';
+    html += '<thead><tr style="background:var(--acento);color:#fff;text-align:left">';
+    ['Sesión','Entrada','Salida','Duración','Ocio','Capturas'].forEach(function(h){
+      html += '<th style="padding:9px 14px;white-space:nowrap">'+h+'</th>';
+    });
+    html += '</tr></thead><tbody>';
+    ses.forEach(function(s, i) {
+      var salida = _cpSalidaEfectiva(s);
+      var salTxt = salida
+        ? (fmtH(salida.time) + (salida.est ? ' <span style="font-size:10px;color:var(--texto-sec)" title="Estimado por &#250;ltimo ping">~est</span>' : ''))
+        : '<span style="color:var(--verde);font-size:12px">&#9679; En l&#237;nea</span>';
+      var durTxt = salida
+        ? fmtDur(s.ent, salida.time)
+        : ('<span style="color:var(--verde)">'+fmtDur(s.ent, null)+'</span>');
+      html += '<tr style="border-bottom:1px solid var(--borde);'+(i%2===1?'background:var(--acento-suave)':'')+'">';
+      html += '<td style="padding:8px 14px;font-weight:600">#'+(i+1)+'</td>';
+      html += '<td style="padding:8px 14px">'+fmtH(s.ent)+'</td>';
+      html += '<td style="padding:8px 14px">'+salTxt+'</td>';
+      html += '<td style="padding:8px 14px">'+durTxt+'</td>';
+      html += '<td style="padding:8px 14px;color:'+(s.ocioMin>0?'#dc2626':'var(--texto-sec)')+'">'+
+        (s.ocioMin>0?Math.floor(s.ocioMin/60)+'h '+(s.ocioMin%60)+'m':'--')+'</td>';
+      html += '<td style="padding:8px 14px;text-align:center">'+s.capt+'</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+    el.innerHTML = html;
+  }
+
+  function _cpRenderDetCapturas(ev) {
+    var el = document.getElementById('cp-det-capt');
+    if (!el) return;
+    var caps = ev.filter(function(e){ return e.tipo === 'captura' && e.url_captura; });
+    if (!caps.length) { el.innerHTML = '<div style="padding:24px;text-align:center;color:var(--texto-sec)">Sin capturas este día.</div>'; return; }
+    el.innerHTML = caps.map(function(c) {
+      var hora = new Date(c.created_at).toLocaleTimeString('es-BO',{hour:'2-digit',minute:'2-digit'});
+      return '<div style="border:1px solid var(--borde);border-radius:10px;overflow:hidden;cursor:pointer;transition:box-shadow .2s"'
+        + ' onclick="window.open(\''+escHtml(c.url_captura)+'\',\'_blank\')"'
+        + ' onmouseover="this.style.boxShadow=\'0 4px 16px rgba(0,0,0,.15)\'" onmouseout="this.style.boxShadow=\'\'">'
+        + '<img src="'+escHtml(c.url_captura)+'" style="width:100%;height:130px;object-fit:cover;display:block" loading="lazy">'
+        + '<div style="padding:8px 12px;font-size:11px;color:var(--texto-sec)">&#128336; '+hora+'</div></div>';
+    }).join('');
+  }
+
+  function _cpRenderDetActividad(ev) {
+    var el = document.getElementById('cp-det-act');
+    if (!el) return;
+    var acts = ev.filter(function(e){ return e.tipo === 'actividad' && e.detalle; });
+    if (!acts.length) { el.innerHTML = '<div style="padding:24px;text-align:center;color:var(--texto-sec)">Sin actividad registrada.</div>'; return; }
+
+    function fmtDurAct(ms) {
+      if (ms === null || ms < 0) return '?';
+      var min = Math.round(ms / 60000);
+      if (min < 1) return '< 1m';
+      if (min < 60) return min + 'm';
+      return Math.floor(min/60) + 'h ' + (min%60) + 'm';
+    }
+
+    var lastEvTime = ev.length ? new Date(ev[ev.length - 1].created_at) : null;
+
+    var visitas = acts.map(function(a, i) {
+      var durMs;
+      if (i + 1 < acts.length) {
+        durMs = new Date(acts[i+1].created_at) - new Date(a.created_at);
+      } else if (lastEvTime) {
+        durMs = lastEvTime - new Date(a.created_at);
+      } else {
+        durMs = null;
+      }
+      return { url: a.detalle, hora: a.created_at, durMs: durMs };
+    });
+
+    var grupos = {};
+    visitas.forEach(function(v) {
+      if (!grupos[v.url]) grupos[v.url] = { totalMs: 0, visitas: 0, incompleto: false };
+      grupos[v.url].visitas++;
+      if (v.durMs !== null) grupos[v.url].totalMs += v.durMs;
+      else grupos[v.url].incompleto = true;
+    });
+    var gruposArr = Object.keys(grupos).map(function(k){ return { url: k, totalMs: grupos[k].totalMs, visitas: grupos[k].visitas, incompleto: grupos[k].incompleto }; });
+    gruposArr.sort(function(a,b){ return b.totalMs - a.totalMs; });
+    var maxMs = gruposArr.length ? gruposArr[0].totalMs : 1;
+
+    var html = '';
+
+    html += '<div style="margin-bottom:18px">';
+    html += '<div style="font-size:11px;font-weight:700;color:var(--texto-sec);letter-spacing:.06em;margin-bottom:8px">RESUMEN POR SITIO</div>';
+    gruposArr.forEach(function(g) {
+      var pct = maxMs > 0 ? Math.round(g.totalMs / maxMs * 100) : 0;
+      html += '<div style="margin-bottom:6px;background:var(--acento-suave);border-radius:8px;padding:9px 13px">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px">';
+      html += '<span style="font-size:12px;color:var(--texto);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1" title="'+escHtml(g.url)+'">'+escHtml(g.url)+'</span>';
+      html += '<span style="font-size:13px;font-weight:800;color:var(--acento);white-space:nowrap">'+fmtDurAct(g.totalMs)+(g.incompleto?'+':'')+'</span>';
+      html += '</div>';
+      html += '<div style="height:4px;background:var(--borde);border-radius:2px">';
+      html += '<div style="height:4px;background:var(--acento);border-radius:2px;width:'+pct+'%"></div></div>';
+      if (g.visitas > 1) html += '<div style="font-size:10px;color:var(--texto-sec);margin-top:3px">'+g.visitas+' visitas</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+
+    html += '<div style="font-size:11px;font-weight:700;color:var(--texto-sec);letter-spacing:.06em;margin-bottom:8px">DETALLE CRONOL&#211;GICO</div>';
+    html += '<div style="display:flex;flex-direction:column;gap:4px">';
+    visitas.forEach(function(v) {
+      var hora = new Date(v.hora).toLocaleTimeString('es-BO',{hour:'2-digit',minute:'2-digit'});
+      html += '<div style="display:flex;gap:10px;align-items:center;padding:7px 12px;border-radius:8px;background:var(--acento-suave);font-size:12px">';
+      html += '<span style="color:var(--texto-sec);white-space:nowrap;font-weight:600;min-width:44px">'+hora+'</span>';
+      html += '<span style="color:var(--texto);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">'+escHtml(v.url)+'</span>';
+      html += '<span style="color:var(--acento);font-weight:700;white-space:nowrap;min-width:36px;text-align:right">'+fmtDurAct(v.durMs)+'</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+
+    el.innerHTML = html;
+  }
+
+  function _cpRenderHistorial(eventos) {
+    var el = document.getElementById('cp-hist-tabla');
+    if (!el) return;
+    var fecha = (document.getElementById('cp-fecha') || {}).value || _localHoy();
+    var hoy   = _localHoy();
+    var emps = {};
+    eventos.forEach(function(e) {
+      if (!emps[e.vendedor_id]) emps[e.vendedor_id] = { nombre: e.vendedor_nombre, evs: [] };
+      emps[e.vendedor_id].evs.push(e);
+    });
+    var keys = Object.keys(emps);
+    if (!keys.length) {
+      el.innerHTML = '<div style="padding:32px;text-align:center;color:var(--texto-sec)">Sin eventos en esta fecha.</div>';
+      return;
+    }
+    var html = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">';
+    html += '<thead><tr style="background:var(--acento);color:#fff;text-align:left">';
+    ['Ejecutivo','Entrada','Salida','Duración','Ocio','Capturas'].forEach(function(h) {
+      html += '<th style="padding:9px 14px;white-space:nowrap">'+h+'</th>';
+    });
+    html += '</tr></thead><tbody>';
+    keys.forEach(function(id) {
+      var emp = emps[id];
+      var ses = _cpSesiones(emp.evs);
+      var fmtH   = function(iso) { return iso ? new Date(iso).toLocaleTimeString('es-BO',{hour:'2-digit',minute:'2-digit'}) : '--'; };
+      var fmtDur = function(a, b) {
+        if (!a) return '--';
+        var m = Math.round(((b?new Date(b):new Date()) - new Date(a)) / 60000);
+        return Math.floor(m/60)+'h '+(m%60)+'m';
+      };
+      var esPasada = fecha !== hoy;
+      (ses.length ? ses : [{ ent:null, sal:null, salEst:null, capt:0, ocioMin:0 }]).forEach(function(s, si) {
+        var salida = _cpSalidaEfectiva(s);
+        var salTxt, durTxt;
+        if (salida) {
+          salTxt = fmtH(salida.time) + (salida.est ? ' <span style="font-size:10px;color:var(--texto-sec)">~est</span>' : '');
+          durTxt = fmtDur(s.ent, salida.time);
+        } else if (esPasada) {
+          salTxt = '<span style="color:var(--texto-ter)">--</span>';
+          durTxt = s.ent ? fmtDur(s.ent, null) : '--';
+        } else {
+          salTxt = '<span style="color:var(--verde);font-size:12px">&#9679; En l&#237;nea</span>';
+          durTxt = '<span style="color:var(--verde)">'+fmtDur(s.ent,null)+'</span>';
+        }
+        html += '<tr style="border-bottom:1px solid var(--borde);'+(si%2===1?'background:var(--acento-suave)':'')+';cursor:pointer"'
+          + ' onclick="cpVerDetalle(\''+escHtml(id)+'\',\''+escHtml(emp.nombre)+'\')">';
+        html += '<td style="padding:8px 14px;font-weight:600">'+escHtml(emp.nombre)+'</td>';
+        html += '<td style="padding:8px 14px">'+fmtH(s.ent)+'</td>';
+        html += '<td style="padding:8px 14px">'+salTxt+'</td>';
+        html += '<td style="padding:8px 14px">'+durTxt+'</td>';
+        html += '<td style="padding:8px 14px;color:'+(s.ocioMin>0?'#dc2626':'var(--texto-sec)')+'">'+
+          (s.ocioMin>0?Math.floor(s.ocioMin/60)+'h '+(s.ocioMin%60)+'m':'--')+'</td>';
+        html += '<td style="padding:8px 14px;text-align:center">'+s.capt+'</td>';
+        html += '</tr>';
+      });
+    });
+    html += '</tbody></table></div>';
+    el.innerHTML = html;
+  }
+
+  // ── HORARIOS Y RETRASOS ──
+  var CP_DIAS = [
+    { key:'lun', label:'Lunes' },
+    { key:'mar', label:'Martes' },
+    { key:'mie', label:'Mi\xe9rcoles' },
+    { key:'jue', label:'Jueves' },
+    { key:'vie', label:'Viernes' },
+    { key:'sab', label:'S\xe1bado' },
+    { key:'dom', label:'Domingo' },
+  ];
+  var CP_DIA_KEYS = ['dom','lun','mar','mie','jue','vie','sab'];
+  var _BTN_STYLE = 'style="padding:5px 10px;border:1px solid var(--borde);border-radius:6px;font-size:13px;font-family:inherit;background:var(--panel);color:var(--texto);width:74px;cursor:pointer;text-align:center;font-weight:600"';
+  function _cpInpBtn(id, val) {
+    var v = val || '--:--';
+    return '<button id="'+id+'" '+_BTN_STYLE+' data-val="'+v+'" onclick="cpAbrirReloj(\''+id+'\')">'+v+'</button>';
+  }
+
+  // ── RELOJ PICKER ──
+  function _cpBtnVal(id) {
+    var b = document.getElementById(id);
+    return b ? (b.dataset.val || b.textContent || '') : '';
+  }
+  var _cpRelInputId = null;
+  var _cpRelHora = 8;
+  var _cpRelMin  = 0;
+  var _cpRelAmPm = 'AM';
+  var _cpRelModo = 'hora';
+
+  function cpAbrirReloj(inputId) {
+    _cpRelInputId = inputId;
+    var btn = document.getElementById(inputId);
+    var val = (btn && btn.dataset && btn.dataset.val) || (btn && btn.textContent) || '08:00';
+    if (val && val.includes(':')) {
+      var p = val.split(':');
+      _cpRelHora = parseInt(p[0]) || 8;
+      _cpRelMin  = Math.round((parseInt(p[1])||0) / 5) * 5 % 60;
+    } else { _cpRelHora = 8; _cpRelMin = 0; }
+    _cpRelAmPm = _cpRelHora < 12 ? 'AM' : 'PM';
+    _cpRelModo = 'hora';
+    var c = document.getElementById('cp-rel-canvas');
+    if (c && !c._rl) {
+      c._rl = true;
+      c.addEventListener('click', function(e) {
+        var r = c.getBoundingClientRect();
+        var x = e.clientX - r.left - c.width/2;
+        var y = e.clientY - r.top  - c.height/2;
+        if (Math.sqrt(x*x+y*y) > c.width/2 - 4) return;
+        var ang = (Math.atan2(y, x) * 180 / Math.PI + 90 + 360) % 360;
+        if (_cpRelModo === 'hora') {
+          var seg = Math.round(ang/30) % 12;
+          var h12 = seg === 0 ? 12 : seg;
+          _cpRelHora = _cpRelAmPm==='PM' && h12!==12 ? h12+12 : (_cpRelAmPm==='AM' && h12===12 ? 0 : h12);
+          _cpRelModo = 'minuto';
+        } else {
+          _cpRelMin = Math.round(ang/30)*5 % 60;
+        }
+        cpActualizarDisplayReloj(); cpDrawReloj();
+      });
+    }
+    document.getElementById('cp-reloj').style.display = 'flex';
+    cpActualizarDisplayReloj(); cpDrawReloj();
+  }
+
+  function cpCerrarReloj() { document.getElementById('cp-reloj').style.display = 'none'; }
+
+  function cpConfirmarReloj() {
+    var btn = document.getElementById(_cpRelInputId);
+    if (btn) {
+      var t = String(_cpRelHora).padStart(2,'0')+':'+String(_cpRelMin).padStart(2,'0');
+      btn.textContent = t;
+      btn.dataset.val = t;
+    }
+    cpCerrarReloj();
+  }
+
+  function cpRelModo(m) { _cpRelModo = m; cpActualizarDisplayReloj(); cpDrawReloj(); }
+
+  function cpRelSetAmPm(ap) {
+    if (ap==='PM' && _cpRelAmPm==='AM' && _cpRelHora<12)  _cpRelHora += 12;
+    if (ap==='AM' && _cpRelAmPm==='PM' && _cpRelHora>=12) _cpRelHora -= 12;
+    _cpRelAmPm = ap;
+    cpActualizarDisplayReloj(); cpDrawReloj();
+  }
+
+  function cpActualizarDisplayReloj() {
+    var h12 = _cpRelHora%12||12;
+    var hhEl = document.getElementById('cp-rel-hh');
+    var mmEl = document.getElementById('cp-rel-mm');
+    var amB  = document.getElementById('cp-rel-am-btn');
+    var pmB  = document.getElementById('cp-rel-pm-btn');
+    if (hhEl) { hhEl.textContent = String(h12).padStart(2,'0'); hhEl.style.opacity = _cpRelModo==='hora'?'1':'0.55'; }
+    if (mmEl) { mmEl.textContent = String(_cpRelMin).padStart(2,'0'); mmEl.style.opacity = _cpRelModo==='minuto'?'1':'0.55'; }
+    if (amB)  amB.style.color = _cpRelAmPm==='AM' ? '#fff' : 'rgba(255,255,255,.35)';
+    if (pmB)  pmB.style.color = _cpRelAmPm==='PM' ? '#fff' : 'rgba(255,255,255,.35)';
+  }
+
+  function cpDrawReloj() {
+    var canvas = document.getElementById('cp-rel-canvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var W = canvas.width, H = canvas.height;
+    var cx = W/2, cy = H/2, R = cx - 6;
+    ctx.clearRect(0,0,W,H);
+    var isDark = window.matchMedia('(prefers-color-scheme:dark)').matches;
+    ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2);
+    ctx.fillStyle = isDark ? '#1e2736' : '#f1f5f9'; ctx.fill();
+    var items = _cpRelModo==='hora' ? [12,1,2,3,4,5,6,7,8,9,10,11] : ['00','05','10','15','20','25','30','35','40','45','50','55'];
+    var selIdx = _cpRelModo==='hora' ? ((_cpRelHora%12||12)-1) : (_cpRelMin/5);
+    var RL = R*0.72;
+    var handAng = (selIdx*30-90)*Math.PI/180;
+    ctx.beginPath(); ctx.moveTo(cx,cy);
+    ctx.lineTo(cx+RL*Math.cos(handAng), cy+RL*Math.sin(handAng));
+    ctx.strokeStyle='#2563eb'; ctx.lineWidth=2; ctx.stroke();
+    items.forEach(function(item,i) {
+      var ang = (i*30-90)*Math.PI/180;
+      var x = cx+RL*Math.cos(ang), y = cy+RL*Math.sin(ang);
+      var sel = (i===selIdx);
+      ctx.beginPath(); ctx.arc(x,y,17,0,Math.PI*2);
+      ctx.fillStyle = sel ? '#2563eb' : 'transparent'; ctx.fill();
+      ctx.fillStyle = sel ? '#fff' : (isDark?'#e2e8f0':'#374151');
+      ctx.font = '600 13px system-ui,sans-serif';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(String(item),x,y);
+    });
+    ctx.beginPath(); ctx.arc(cx,cy,4,0,Math.PI*2);
+    ctx.fillStyle='#2563eb'; ctx.fill();
+  }
+
+  function _cpHorFilaHtml(dk, label, dData) {
+    var on  = dData && dData.activo;
+    var t1e = (dData && dData.t1e) || '08:00';
+    var t1s = (dData && dData.t1s) || '13:00';
+    var t2e = (dData && dData.t2e) || '14:00';
+    var t2s = (dData && dData.t2s) || '18:00';
+    var t2  = dData && dData.t2;
+    var dis  = on ? '' : 'opacity:.35;pointer-events:none';
+    var dis2 = (on && t2) ? '' : 'opacity:.35;pointer-events:none';
+    return '<tr style="border-bottom:1px solid var(--borde)">'
+      + '<td style="padding:8px 12px;white-space:nowrap"><label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:600;font-size:13px">'
+      + '<input type="checkbox" id="hor-'+dk+'-on"'+(on?' checked':'')+' style="width:15px;height:15px" onchange="_cpHorToggleDia(\''+dk+'\')">'
+      + label+'</label></td>'
+      + '<td style="padding:8px 6px;border-left:2px solid var(--borde)"><div id="hor-'+dk+'-t1" style="'+dis+'">'+_cpInpBtn('hor-'+dk+'-t1e', t1e)+'</div></td>'
+      + '<td style="padding:8px 6px"><div id="hor-'+dk+'-t1s-w" style="'+dis+'">'+_cpInpBtn('hor-'+dk+'-t1s', t1s)+'</div></td>'
+      + '<td style="padding:8px 6px;border-left:2px solid var(--borde)"><div style="'+(on?'':'opacity:.35;pointer-events:none')+'" id="hor-'+dk+'-t2w"><label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;white-space:nowrap">'
+      + '<input type="checkbox" id="hor-'+dk+'-t2on"'+(t2?' checked':'')+' style="width:14px;height:14px" onchange="_cpHorToggleT2(\''+dk+'\')">'
+      + 'Tarde</label></div></td>'
+      + '<td style="padding:8px 6px"><div id="hor-'+dk+'-t2e-w" style="'+dis2+'">'+_cpInpBtn('hor-'+dk+'-t2e', t2e)+'</div></td>'
+      + '<td style="padding:8px 6px"><div id="hor-'+dk+'-t2s-w" style="'+dis2+'">'+_cpInpBtn('hor-'+dk+'-t2s', t2s)+'</div></td>'
+      + '</tr>';
+  }
+
+  function _cpHorToggleDia(dk) {
+    var on = document.getElementById('hor-'+dk+'-on').checked;
+    var dis = on ? '' : 'opacity:.35;pointer-events:none';
+    ['hor-'+dk+'-t1','hor-'+dk+'-t1s-w','hor-'+dk+'-t2w'].forEach(function(id){
+      var el = document.getElementById(id); if (el) el.style.cssText = dis;
+    });
+    if (!on) {
+      ['hor-'+dk+'-t2e-w','hor-'+dk+'-t2s-w'].forEach(function(id){
+        var el = document.getElementById(id); if (el) el.style.cssText = 'opacity:.35;pointer-events:none';
+      });
+    } else {
+      _cpHorToggleT2(dk);
+    }
+  }
+
+  function _cpHorToggleT2(dk) {
+    var on  = document.getElementById('hor-'+dk+'-on').checked;
+    var t2  = document.getElementById('hor-'+dk+'-t2on').checked;
+    var dis = (on && t2) ? '' : 'opacity:.35;pointer-events:none';
+    ['hor-'+dk+'-t2e-w','hor-'+dk+'-t2s-w'].forEach(function(id){
+      var el = document.getElementById(id); if (el) el.style.cssText = dis;
+    });
+  }
+
+  function cpAbrirHorario() {
+    if (!_cpDetEmpId) return;
+    var sub = document.getElementById('cp-hor-sub');
+    var nom = document.getElementById('cp-det-nombre');
+    if (sub) sub.textContent = 'Empleado: ' + (nom ? nom.textContent : '');
+    supa.from('cp_horarios').select('*').eq('vendedor_id', _cpDetEmpId).single().then(function(r) {
+      var h  = (!r.error && r.data) ? r.data : null;
+      var dias = (h && h.dias) ? h.dias : {};
+      document.getElementById('cp-hor-tol').value = h ? (h.tolerancia_minutos || 5) : 5;
+      var tbody = document.getElementById('cp-hor-tbody');
+      if (tbody) {
+        tbody.innerHTML = CP_DIAS.map(function(d){ return _cpHorFilaHtml(d.key, d.label, dias[d.key]); }).join('');
+      }
+      var modal = document.getElementById('cp-modal-horario');
+      if (modal) modal.style.display = 'flex';
+    });
+  }
+
+  function cpCerrarHorario() {
+    var modal = document.getElementById('cp-modal-horario');
+    if (modal) modal.style.display = 'none';
+  }
+
+  function cpGuardarHorario() {
+    if (!_cpDetEmpId) return;
+    var nombre = (document.getElementById('cp-det-nombre') || {}).textContent || '';
+    var dias = {};
+    CP_DIAS.forEach(function(d) {
+      var on  = document.getElementById('hor-'+d.key+'-on');
+      var t2  = document.getElementById('hor-'+d.key+'-t2on');
+      if (!on) return;
+      dias[d.key] = {
+        activo: on.checked,
+        t1e: (_cpBtnVal('hor-'+d.key+'-t1e')) || '08:00',
+        t1s: (_cpBtnVal('hor-'+d.key+'-t1s')) || '13:00',
+        t2:  t2 ? t2.checked : false,
+        t2e: (_cpBtnVal('hor-'+d.key+'-t2e')) || '14:00',
+        t2s: (_cpBtnVal('hor-'+d.key+'-t2s')) || '18:00',
+      };
+    });
+    var row = {
+      vendedor_id: _cpDetEmpId, vendedor_nombre: nombre,
+      tolerancia_minutos: parseInt(document.getElementById('cp-hor-tol').value) || 5,
+      dias: dias, updated_at: new Date().toISOString()
+    };
+    supa.from('cp_horarios').upsert(row, { onConflict: 'vendedor_id' }).then(function(r) {
+      if (r.error) { mostrarToast('Error: ' + r.error.message); return; }
+      cpCerrarHorario();
+      mostrarToast('Horario guardado');
+      if (_cpDetTab === 'retrasos') _cpCargarDetalle(_cpDetEmpId);
+    });
+  }
+
+  function _cpMinutosRetraso(checkinISO, horEntrada, tolMin, fecha) {
+    if (!checkinISO || !horEntrada) return 0;
+    var p = horEntrada.slice(0,5).split(':');
+    var limite = new Date(fecha + 'T' + p[0].padStart(2,'0') + ':' + p[1].padStart(2,'0') + ':00');
+    limite = new Date(limite.getTime() + tolMin * 60000);
+    var diff = Math.round((new Date(checkinISO) - limite) / 60000);
+    return diff > 0 ? diff : 0;
+  }
+
+  var _MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+  function _cpRenderDetRetrasos(ev, horario) {
+    var el = document.getElementById('cp-det-ret');
+    if (!el) return;
+    if (!horario || !horario.dias) {
+      el.innerHTML = '<div style="padding:24px;text-align:center;color:var(--texto-sec)">Sin horario configurado. Haz clic en <b>&#9881; Horario</b> para asignarle uno.</div>';
+      return;
+    }
+    var tol = horario.tolerancia_minutos || 5;
+    var byDay = {};
+    ev.forEach(function(e) {
+      var d = e.created_at.slice(0,10);
+      if (!byDay[d]) byDay[d] = [];
+      byDay[d].push(e);
+    });
+    var fechas = Object.keys(byDay).sort();
+    if (!fechas.length) { el.innerHTML = '<div style="padding:24px;text-align:center;color:var(--texto-sec)">Sin registros en los \xfaltimos 6 meses.</div>'; return; }
+
+    var byMes = {};
+    fechas.forEach(function(f) {
+      var dow  = CP_DIA_KEYS[new Date(f + 'T12:00:00').getDay()];
+      var dHor = horario.dias[dow];
+      if (!dHor || !dHor.activo) return;
+      var mes  = f.slice(0,7);
+      if (!byMes[mes]) byMes[mes] = { diasReg: 0, diasConRet: 0, totalRet: 0, filas: [] };
+      var checkins = byDay[f].filter(function(e){ return e.tipo==='checkin'; }).sort(function(a,b){ return a.created_at>b.created_at?1:-1; });
+      byMes[mes].diasReg++;
+      var tuvoRetraso = false;
+      var turnos = [];
+      if (dHor.t1e) {
+        var c1   = checkins[0] || null;
+        var r1   = c1 ? new Date(c1.created_at).toLocaleTimeString('es-BO',{hour:'2-digit',minute:'2-digit'}) : '--';
+        var m1   = c1 ? _cpMinutosRetraso(c1.created_at, dHor.t1e, tol, f) : null;
+        if (m1 > 0) { byMes[mes].totalRet += m1; tuvoRetraso = true; }
+        turnos.push({ turno:'Ma\xf1ana', esp: dHor.t1e.slice(0,5), real: r1, ret: m1 });
+      }
+      if (dHor.t2 && dHor.t2e) {
+        var despuesDe = dHor.t1s ? new Date(f + 'T' + dHor.t1s.slice(0,5) + ':00') : new Date(f + 'T12:00:00');
+        var c2 = checkins.find(function(c){ return new Date(c.created_at) >= despuesDe; }) || null;
+        var r2 = c2 ? new Date(c2.created_at).toLocaleTimeString('es-BO',{hour:'2-digit',minute:'2-digit'}) : '--';
+        var m2 = c2 ? _cpMinutosRetraso(c2.created_at, dHor.t2e, tol, f) : null;
+        if (m2 > 0) byMes[mes].totalRet += m2;
+        turnos.push({ turno:'Tarde', esp: dHor.t2e.slice(0,5), real: r2, ret: m2 });
+      }
+      if (tuvoRetraso) byMes[mes].diasConRet++;
+      byMes[mes].filas.push({ fecha: f, turnos: turnos });
+    });
+
+    var meses = Object.keys(byMes).sort().reverse();
+    if (!meses.length) { el.innerHTML = '<div style="padding:24px;text-align:center;color:var(--texto-sec)">Sin d\xedas laborales configurados en el per\xedodo.</div>'; return; }
+
+    var totalGlobalRet = 0; var totalGlobalDias = 0;
+    meses.forEach(function(m){ totalGlobalRet += byMes[m].totalRet; totalGlobalDias += byMes[m].diasConRet; });
+
+    var html = '<div style="display:flex;gap:12px;margin-bottom:22px;flex-wrap:wrap">';
+    html += '<div class="panel-card" style="padding:14px 18px;flex:1;min-width:120px"><div style="font-size:22px;font-weight:800;color:#dc2626">'+totalGlobalRet+'m</div><div style="font-size:11px;color:var(--texto-sec);margin-top:3px;font-weight:600">RETRASO TOTAL ACUMULADO</div></div>';
+    html += '<div class="panel-card" style="padding:14px 18px;flex:1;min-width:120px"><div style="font-size:22px;font-weight:800;color:#dc2626">'+totalGlobalDias+'</div><div style="font-size:11px;color:var(--texto-sec);margin-top:3px;font-weight:600">D\xcdAS CON RETRASO</div></div>';
+    html += '<div class="panel-card" style="padding:14px 18px;flex:1;min-width:120px"><div style="font-size:22px;font-weight:800;color:var(--acento)">'+meses.length+'</div><div style="font-size:11px;color:var(--texto-sec);margin-top:3px;font-weight:600">MESES CON REGISTRO</div></div>';
+    html += '<div class="panel-card" style="padding:14px 18px;flex:1;min-width:120px"><div style="font-size:22px;font-weight:800;color:var(--acento)">'+tol+'m</div><div style="font-size:11px;color:var(--texto-sec);margin-top:3px;font-weight:600">TOLERANCIA</div></div>';
+    html += '</div>';
+
+    html += '<div style="font-size:12px;font-weight:700;color:var(--texto-sec);margin-bottom:10px;letter-spacing:.05em">RESUMEN POR MES</div>';
+    html += '<div style="overflow-x:auto;margin-bottom:28px"><table style="width:100%;border-collapse:collapse;font-size:13px">';
+    html += '<thead><tr style="background:var(--acento);color:#fff;text-align:left">';
+    ['Mes','D\xedas con registro','D\xedas con retraso','Retraso acumulado','Promedio por d\xeda tard\xedo'].forEach(function(h){
+      html += '<th style="padding:9px 14px;white-space:nowrap">'+h+'</th>';
+    });
+    html += '</tr></thead><tbody>';
+    meses.forEach(function(m, idx) {
+      var d = byMes[m];
+      var p = m.split('-');
+      var nomMes = _MESES_ES[parseInt(p[1])-1] + ' ' + p[0];
+      var prom   = d.diasConRet ? Math.round(d.totalRet / d.diasConRet) : 0;
+      var color  = d.totalRet === 0 ? '#16a34a' : d.totalRet < 30 ? '#d97706' : '#dc2626';
+      html += '<tr style="border-bottom:1px solid var(--borde);cursor:pointer;'+(idx%2===1?'background:var(--acento-suave)':'')+'" onclick="_cpToggleMes(\'mes-'+m+'\')">';
+      html += '<td style="padding:9px 14px;font-weight:700">&#128197; '+nomMes+'</td>';
+      html += '<td style="padding:9px 14px;text-align:center">'+d.diasReg+'</td>';
+      html += '<td style="padding:9px 14px;text-align:center;color:'+color+';font-weight:700">'+d.diasConRet+'</td>';
+      html += '<td style="padding:9px 14px;font-weight:800;color:'+color+'">'+d.totalRet+'m</td>';
+      html += '<td style="padding:9px 14px;color:'+color+'">'+( prom ? '+'+prom+'m' : '<span style="color:#16a34a">&#10003; Sin retrasos</span>')+'</td>';
+      html += '</tr>';
+      html += '<tr id="mes-'+m+'" style="display:none"><td colspan="5" style="padding:0 0 4px 0">';
+      html += '<table style="width:100%;border-collapse:collapse;font-size:12px;background:var(--acento-suave)">';
+      html += '<thead><tr style="background:rgba(0,0,0,.06);color:var(--texto-sec)">';
+      ['Fecha','Turno','Esperado','Real','Estado'].forEach(function(h){ html += '<th style="padding:6px 14px;text-align:left;font-weight:700;font-size:11px">'+h+'</th>'; });
+      html += '</tr></thead><tbody>';
+      d.filas.forEach(function(fila) {
+        fila.turnos.forEach(function(t, ti) {
+          var retStr = t.ret === null ? '<span style="color:var(--texto-sec)">--</span>'
+            : t.ret === 0 ? '<span style="color:#16a34a;font-weight:600">&#10003; A tiempo</span>'
+            : '<span style="color:#dc2626;font-weight:700">+'+t.ret+'m</span>';
+          html += '<tr style="border-top:1px solid rgba(0,0,0,.06)">';
+          html += ti===0 ? '<td style="padding:6px 14px;font-weight:600">'+fila.fecha+'</td>' : '<td style="padding:6px 14px;color:var(--texto-sec)"></td>';
+          html += '<td style="padding:6px 14px;color:var(--texto-sec)">'+t.turno+'</td>';
+          html += '<td style="padding:6px 14px">'+t.esp+'</td>';
+          html += '<td style="padding:6px 14px;font-weight:600">'+t.real+'</td>';
+          html += '<td style="padding:6px 14px">'+retStr+'</td>';
+          html += '</tr>';
+        });
+      });
+      html += '</tbody></table></td></tr>';
+    });
+    html += '</tbody></table></div>';
+    el.innerHTML = html;
+  }
+
+  function _cpToggleMes(id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = el.style.display === 'none' ? 'table-row' : 'none';
+  }
+</script>
+</body>
+</html>
